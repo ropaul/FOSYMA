@@ -3,11 +3,13 @@ package mas;
 
 
 import jade.core.Agent;
+import jade.core.Location;
 import jade.core.Profile;
 import jade.core.ProfileImpl;
 import jade.core.Runtime;
 
 
+import jade.domain.JADEAgentManagement.QueryAgentsOnLocation;
 import jade.util.leap.Iterator;
 import jade.wrapper.AgentContainer;
 import jade.wrapper.AgentController;
@@ -19,7 +21,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import agents.AgentAventurier;
 import agents.AgentExplorer;
+import agents.AgentReussi;
 import env.Environment;
 import env.Environment.ENVtype;
 
@@ -59,15 +63,166 @@ public class EmptyEnv {
 	private static Environment env;// static ref of the real environment
 
 	public static void main(String[] args){
-
+		
+		
+		
 		//0) Create the real environment and the observed one
 
 
+				/////
+				////
+				////
+
+				env= new Environment(ENVtype.GRID_WT , 5); // ANCIENEMENT (true,30)
+				////
+				////
+				///
+
+				//1), create the platform (Main container (DF+AMS) + containers + monitoring agents : RMA and SNIFFER)
+				rt=emptyPlatform(containerList);
+
+				//2) create agents and add them to the platform.
+				agentList=createAgents(containerList);
+
+				//		try {
+				//			System.out.println("Press a key to start the agents");
+				//			System.in.read();
+				//		} catch (IOException e) {
+				//			// TODO Auto-generated catch block
+				//			e.printStackTrace();
+				//		}
+
+				//3) launch agents
+				startAgents(agentList);
+
+
+		//0) Create the real environment and the observed one
+
+/**
 		/////
 		////
 		////
+		int port = 8888;
+		String cied = "PPTI-14-407-11";
+		String ciedName = " Hell";
+		String prof = "ppti-14-407-14";
+		String profName = "idPlatform";
+		String myName = "le mec-a-coté-de-la-porte";
+		
+		Profile p = new ProfileImpl(prof, port , prof);
+		p.setParameter("container-name", myName);
+		ContainerController cc = Runtime.instance().createAgentContainer(p);
+		
+		
+		
+		
+		// creation de conteneur (local)
+		
+				//env= new Environment(ENVtype.GRID , 2); // ANCIENEMENT (true,30)
+				//rt=emptyPlatform(containerList);
+		
+				
+//				String containerName;
+//				ProfileImpl pContainer;
+//				ContainerController containerRef;
+//				HashMap<String, ContainerController> containerList=new HashMap<String, ContainerController>();//bad to do it here.
+//
+//
+//				System.out.println("Launching containers ...");
+//
+//				//create the container0	
+//				containerName="container0";
+//				pContainer = new ProfileImpl(null, 8888, null);
+//				System.out.println("Launching container "+pContainer);
+//				containerRef = rt.createAgentContainer(pContainer); //ContainerController replace AgentContainer in the new versions of Jade.
+//				containerList.put(containerName, containerRef);
+//		
+//		
+//				
+//
+//				System.out.println("Launching agents...");
+//				ContainerController c;
+//				String agentName;
+//				List<AgentController> agentList=new ArrayList();
+//				
+		
+		//Agent1 on container0
+//				c = containerList.get("container0");
+				String agentName="Indiana Jones";
+				try {
+				//	Object[] objtab=new Object[]{env};//used to give informations to the agent
+					AgentController	ag2=cc.createNewAgent(agentName,AgentReussi.class.getName(),null);
+					//agentList.add(ag2);
+					System.out.println(agentName+" launched");
+				} catch (StaleProxyException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+	**
+		
+		
+		
+		
+		
+		// creation de conteneur (local)
+		
+		env= new Environment(ENVtype.GRID , 2); // ANCIENEMENT (true,30)
+		rt=emptyPlatform(containerList);
+		
+		String containerName;
+		ProfileImpl pContainer;
+		ContainerController containerRef;
+		HashMap<String, ContainerController> containerList=new HashMap<String, ContainerController>();//bad to do it here.
 
-		env= new Environment(ENVtype.GRID_W , 4); // ANCIENEMENT (true,30)
+
+		System.out.println("Launching containers ...");
+
+		//create the container0	
+		containerName="container0";
+		pContainer = new ProfileImpl(null, 8888, null);
+		System.out.println("Launching container "+pContainer);
+		containerRef = rt.createAgentContainer(pContainer); //ContainerController replace AgentContainer in the new versions of Jade.
+		containerList.put(containerName, containerRef);
+
+		// creation d un agent (en local)
+		
+		
+		System.out.println("Launching agents...");
+		ContainerController c;
+		String agentName;
+		List<AgentController> agentList=new ArrayList();
+		
+		
+		//Agent1 on container0
+		c = containerList.get("container0");
+		agentName="Indiana Jones";
+		try {
+			Object[] objtab=new Object[]{env};//used to give informations to the agent
+			AgentController	ag2=c.createNewAgent(agentName,AgentReussi.class.getName(),objtab);
+			agentList.add(ag2);
+			System.out.println(agentName+" launched");
+		} catch (StaleProxyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
+		//start de l'agent
+
+		for(final AgentController ac: agentList){
+			try {
+				ac.start();
+			} catch (StaleProxyException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+		}
+		
+	
+
+		env= new Environment(ENVtype.GRID , 2); // ANCIENEMENT (true,30)
 		////
 		////
 		///
@@ -88,9 +243,15 @@ public class EmptyEnv {
 
 		//3) launch agents
 		startAgents(agentList);
-
+		
+		
+		
+//		QueryAgentsOnLocation queryLocation = new QueryAgentsOnLocation();
+//		queryLocation.setLocation(agentList.get(1)); 
+	
+**/
 	}
-
+		
 
 
 	/**********************************************
@@ -109,7 +270,7 @@ public class EmptyEnv {
 		Runtime rt = Runtime.instance();
 
 		// 1) create a platform (main container+DF+AMS)
-		Profile pMain = new ProfileImpl(hostname, 8888, null);
+		Profile pMain = new ProfileImpl(hostname, 8888, "plateform");
 		System.out.println("Launching a main-container..."+pMain);
 		AgentContainer mainContainerRef = rt.createMainContainer(pMain); //DF and AMS are include
 
@@ -240,12 +401,12 @@ public class EmptyEnv {
 
 		//Agent0 on container0
 		c = containerList.get("container0");
-		agentName="John McClane";
+		agentName="la magicienne";
 		try {
 
 
 			Object[] objtab=new Object[]{env};//used to give informations to the agent
-			AgentController	ag=c.createNewAgent(agentName,AgentExplorer.class.getName(),objtab);
+			AgentController	ag=c.createNewAgent(agentName,AgentAventurier.class.getName(),objtab);
 			agentList.add(ag);
 			System.out.println(agentName+" launched");
 		} catch (StaleProxyException e) {
@@ -255,12 +416,12 @@ public class EmptyEnv {
 
 		//Agent1 on container0
 		c = containerList.get("container0");
-		agentName="Indiana Jones";
+		agentName="le ranger";
 		try {
 
 
 			Object[] objtab=new Object[]{env};//used to give informations to the agent
-			AgentController	ag2=c.createNewAgent(agentName,AgentExplorer.class.getName(),objtab);
+			AgentController	ag2=c.createNewAgent(agentName,AgentAventurier.class.getName(),objtab);
 			agentList.add(ag2);
 			System.out.println(agentName+" launched");
 		} catch (StaleProxyException e) {

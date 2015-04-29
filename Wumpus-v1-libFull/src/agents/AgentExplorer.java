@@ -224,7 +224,7 @@ public class AgentExplorer extends abstractAgent{
 			}
 			s+= "} \n";
 		}
-		//System.out.println(s);
+		System.out.println(s);
 	}
 
 
@@ -361,7 +361,7 @@ public class AgentExplorer extends abstractAgent{
 				//System.out.println(parentNoeud);
 				return parentNoeud.get(myPosition);
 			}
-			System.out.println("i'm no idea what i'm doing");
+			System.out.println("i have no idea what i'm doing");
 			//System.out.println(maze);
 			//this.myAgent.doWait(1000000);
 			while (true){
