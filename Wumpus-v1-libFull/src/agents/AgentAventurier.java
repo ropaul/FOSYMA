@@ -2,6 +2,7 @@ package agents;
 
 import jade.core.AID;
 import jade.core.Agent;
+import jade.core.CaseInsensitiveString;
 import jade.core.behaviours.Behaviour;
 import jade.core.behaviours.SimpleBehaviour;
 import jade.core.behaviours.TickerBehaviour;
@@ -18,25 +19,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Vector;
 
-import org.graphstream.graph.Graph;
-import org.graphstream.graph.Node;
-import org.graphstream.graph.implementations.SingleGraph;
+
+
+
+
 
 import chemin.Dijkstra;
 import chemin.Graphe;
-import agents.AgentExplorer.ExplorerBehaviour;
-import agents.AgentExplorer.FinalDestinationBehaviour;
-import agents.AgentExplorer.ListenerBehaviour;
-import agents.AgentExplorer.TalkBehaviour;
-import agents.AgentExplorer.TalkCapacityTreasurBehaviour;
-import agents.AgentExplorer.TalkTreasurBehaviour;
 import env.Attribute;
 import env.Environment;
 import env.Environment.Couple;
 import mas.abstractAgent;
 
 public class AgentAventurier extends abstractAgent{
-	
+
 	private static String defaultNode = " node { fill-color: white;text-color: black; }";
 	private static String wind = "node_wind {fill-color: white;text-color:pink;}";
 	private static String well = "node_well {fill-color: white;text-color:blue;}";
@@ -53,7 +49,7 @@ public class AgentAventurier extends abstractAgent{
 	private ArrayList<AID> senders ;
 
 	// sa position actuelle
-	private String pos;
+	private String pos="";
 
 	// sa prochaine destination
 	private String dest;
@@ -66,11 +62,14 @@ public class AgentAventurier extends abstractAgent{
 
 	// la liste des différents bihavior qu'a l'agent
 	protected HashMap<String,Behaviour> comportement ;
+	
+	
+	protected ArrayList<ACLMessage> boiteEnvoie;
 
 	//le temps entre chaque pas
-	int clock = 500;
-	
-	
+	int clock = 1000;
+
+
 	//Graph graph ;
 
 	protected void setup(){
@@ -82,10 +81,10 @@ public class AgentAventurier extends abstractAgent{
 		parentNoeud = new  HashMap<String,String>();
 		etatNoeud = new HashMap<String, StateMaze>();
 		comportement = new HashMap<String, Behaviour>();
-	//	graph = new SingleGraph(getLocalName());
-	//	graph.addAttribute("ui.stylesheet", Nodes);
-	//	graph.display();
-
+		//	graph = new SingleGraph(getLocalName());
+		//	graph.addAttribute("ui.stylesheet", Nodes);
+		//	graph.display();
+		boiteEnvoie= new ArrayList<ACLMessage>();
 
 		//get the parameters given into the object[]
 		final Object[] args = getArguments();
@@ -200,7 +199,7 @@ public class AgentAventurier extends abstractAgent{
 				result.add(noeud.get(v.get(i)));
 			}
 			result.add (destination);
-			System.out.println(getLocalName()+" plus court chemin done !");
+			//System.out.println(getLocalName()+" plus court chemin done !");
 		}
 		// si chemin n'existe pas , on renvoie la position
 		catch(Exception e){
@@ -208,6 +207,89 @@ public class AgentAventurier extends abstractAgent{
 			result.add(getCurrentPosition());
 		}
 		return result ;
+	}
+
+
+	protected void afficherMaze(){
+		int taille = Math.min(etatNoeud.size(), 5);
+		String affiche = "";
+		for (int i =0 ; i< taille ; i++){
+			for (int j=0 ; j < taille;j++){
+				String s = i+ "_"+j ;
+				if (maze.containsKey(s)){
+					//affiche += " "+s;
+					if (this.etatNoeud.containsKey(s)){
+						StateMaze state= etatNoeud.get(s);
+						switch(state){
+						case Inconnue :
+							affiche +=" "+i+"I"+j;
+							break;
+						case Puits :
+							affiche +=" "+i+"%"+j;
+							break;
+						case Visiter :
+							affiche +=" "+i+"X"+j;
+							break;
+						case Rien:
+							affiche +=" "+i+"R"+j;
+							break;
+						default :
+							affiche +=" "+s;
+							break;
+						}
+					}
+					else {
+						affiche +=" "+s;
+					}
+				}
+				else {
+					affiche += " ___";
+				}
+			}
+			affiche +="\n";
+		}
+		System.out.println(affiche);
+		
+	}
+
+	protected void afficherTypeNoeud(){
+		int taille = Math.min(etatNoeud.size(), 5);
+		String affiche = "";
+		String affiche1 = "";
+		String affiche2 = "";
+		for (int i =0 ; i< taille ; i++){
+			affiche1 = "";
+			affiche2 = "";
+			for (int j=0 ; j < taille;j++){
+				String s = i+ "_"+j ;
+				affiche2 += s+" ";
+				if (this.etatNoeud.containsKey(s)){
+					StateMaze state= etatNoeud.get(s);
+					switch(state){
+					case Inconnue :
+						affiche1 +="\t ?";
+						break;
+					case Puits :
+						affiche1 +="\t %";
+						break;
+					case Visiter :
+						affiche1 +="\t X";
+						break;
+					case Rien:
+						affiche1 +="\t R";
+						break;
+					default :
+						affiche1 +="\t  ";
+						break;
+					}
+				}
+				else {
+					affiche +="\t  ";
+				}
+			}
+			affiche+= affiche2 +"\n" + affiche1 +"\n" ;
+		}
+		System.out.println(affiche);
 	}
 
 
@@ -236,8 +318,9 @@ public class AgentAventurier extends abstractAgent{
 		// la derniere position connu ?
 		private String lastPosition;
 		private abstractAgent myAgent;
-		
+
 		private int unefoissurdeux = 0;
+		private int compteur = 0;
 
 		public ExplorerBehaviour (final abstractAgent myagent,Environment realEnv) {
 			// Pour changer la vitesse , c'est ICI
@@ -246,7 +329,7 @@ public class AgentAventurier extends abstractAgent{
 			stuck = false ;
 			this.myAgent = myagent;
 
-			System.out.println("EXPLORER MODE for " + myagent.getLocalName());
+////			System.out.println("EXPLORER MODE for " + myagent.getLocalName());
 
 
 		}
@@ -254,14 +337,30 @@ public class AgentAventurier extends abstractAgent{
 		// Truc a faire dans le béhavior d'exploration
 		@Override
 		protected void onTick() {
+			
+			System.out.println("dst"+pos);
+			
+			
+			// envoie les messages pas recu
+			if (compteur == 10){
+				myAgent.addBehaviour(new TalkmemoryBehaviour(myAgent, realEnv));
+				compteur =0;
+			}
+			else {
+				compteur ++ ;
+			}
 
 			//affichage
 			//afficherGraphe();
 			//System.out.println(etatNoeud);
 			//System.out.println(parentNoeud);
-			
+
 			// ecoute ses messages
 			myAgent.addBehaviour (new ListenerBehaviour (myAgent));
+			
+		
+			
+///////			System.out.println(myAgent.getLocalName() +": "+ etatNoeud);
 
 
 			pos=getCurrentPosition();
@@ -270,32 +369,43 @@ public class AgentAventurier extends abstractAgent{
 			//met a jour la liste des arretes
 			majMap();
 
+			if (stuck ==true  && findDestination()!= pos){
+				comportement.put("destination", new  littlestWayBehaviour(myAgent, pos, findDestination(), realEnv)  );
+				addBehaviour(comportement.get("destination"));
+				myAgent.removeBehaviour(this);
+				comportement.remove("explore");
+				return ;
+			}
+			
+			// affiche le labythinte
+////			afficherMaze();
+			
 			//gestion des tresor
 			//si l'agent a assez de place il prend le trésor, sinon il demande aux autres agents.
 			// Si personne ne répond , il ira prendre le trésore (comme si il était un agent qui aurait était informer par un autre agent)
 			List<Attribute> lattribute= realEnv.observe(pos, this.myAgent.getLocalName()).get(0).getR();
-						for(Attribute a:lattribute){
-							switch (a) {
-						case TREASURE:
-							System.out.println("My current backpack capacity is:"+ getBackPackFreeSpace());
-							System.out.println("Value of the treasure on the current position: "+a.getValue());
-							if (getBackPackFreeSpace()>= (Integer)a.getValue())
-							{
-								System.out.println("I," +  this.myAgent.getLocalName() + " grabbed the treasure entirely :"+pick());
-							}
-							else{
-								myAgent.addBehaviour(new TalkTreasurBehaviour(myAgent, realEnv, pos,(Integer) a.getValue()));
-							}
-							break;
-						default:
-								break;
-						}
-					}			
+			for(Attribute a:lattribute){
+				switch (a) {
+				case TREASURE:
+					System.out.println("My current backpack capacity is:"+ getBackPackFreeSpace());
+					System.out.println("Value of the treasure on the current position: "+a.getValue());
+					if (getBackPackFreeSpace()>= (Integer)a.getValue())
+					{
+						System.out.println("I," +  this.myAgent.getLocalName() + " grabbed the treasure entirely :"+pick());
+					}
+					else{
+						myAgent.addBehaviour(new TalkTreasurBehaviour(myAgent, realEnv, pos,(Integer) a.getValue()));
+					}
+					break;
+				default:
+					break;
+				}
+			}			
 
 			//decide de la position
 			dest =choixDestination(pos, realEnv);
-			
-			
+
+
 			//gere l'interblocage !!!!!
 			if (dest == lastPosition ){
 				dest =aleatoire(pos, realEnv);
@@ -305,7 +415,7 @@ public class AgentAventurier extends abstractAgent{
 			}
 			// bouge l'agent
 			move(pos, dest);
-			
+
 		}
 
 		// l'algo de chemin, correspond a un parcours en longueur  , Se sert de random de temps en temps
@@ -316,26 +426,28 @@ public class AgentAventurier extends abstractAgent{
 					if (myPosition != s && parentNoeud.containsKey(s)==false) parentNoeud.put(s, myPosition);
 					maze.get(myPosition).put(s, 1);
 					maze.get(s).put(myPosition, 1);
-//					System.out.println("pos ="+myPosition +"  dest="+  s +": " + myAgent.getLocalName() );
+					//					System.out.println("pos ="+myPosition +"  dest="+  s +": " + myAgent.getLocalName() );
 					// donne sa position a tous les agents
 
 					myAgent.addBehaviour(new TalkBehaviour(myAgent, realEnv, pos, s, etatNoeud.get(pos)));
-					
+
 
 					return s;
 				}
 			}
 			// si tout noeud fils visiter, retour en arriere
 			while (parentNoeud.containsKey(myPosition) && !parentNoeud.get(myPosition).equals( "0_0")){
-//				System.out.println("retour a la source " + parentNoeud.get(myPosition)+": "+ myAgent.getLocalName());
+				//				System.out.println("retour a la source " + parentNoeud.get(myPosition)+": "+ myAgent.getLocalName());
+				
 				return parentNoeud.get(myPosition);
 			}
 
 			// Si retour a la racine , fait n'importe quoi.
-//			System.out.println("i have no idea what i'm doing");
+			//			System.out.println("i have no idea what i'm doing");
 
 			// Fait un mouvement au hasard. Est limité car s'effectura toujours proche de l'origine
 			while (true){
+				stuck = true;
 				double rand = Math.random(); 
 				double value =  (1.0 / (maze.get(myPosition).size()*1.0));
 				for (String s : maze.get(myPosition).keySet()){
@@ -354,17 +466,17 @@ public class AgentAventurier extends abstractAgent{
 			// fait un parcours en longeur , choisit un noeud fis a visiter
 			System.out.println("aleatoire pour : " + myAgent.getLocalName());
 			for (String s : maze.get(myPosition).keySet()){
-					if (myPosition != s && parentNoeud.containsKey(s)==false) parentNoeud.put(s, myPosition);
-					maze.get(myPosition).put(s, 1);
-					maze.get(s).put(myPosition, 1);
-					myAgent.addBehaviour(new TalkBehaviour(myAgent, realEnv, pos, s, etatNoeud.get(pos)));
-					return s;
-				
+				if (myPosition != s && parentNoeud.containsKey(s)==false) parentNoeud.put(s, myPosition);
+				maze.get(myPosition).put(s, 1);
+				maze.get(s).put(myPosition, 1);
+				myAgent.addBehaviour(new TalkBehaviour(myAgent, realEnv, pos, s, etatNoeud.get(pos)));
+				return s;
+
 			}
 			return myPosition;
 		}
-		
-		
+
+
 		//Met a jour le labyrinthe connu de l'agent
 		protected void majMap() {
 			String myPosition=getCurrentPosition();
@@ -375,6 +487,15 @@ public class AgentAventurier extends abstractAgent{
 				List<Couple<String,List<Attribute>>> lobs=observe(myPosition);
 				majMap1(myPosition,lobs);
 				majMap2(lobs,myPosition);
+				
+				//test
+//				for (String dest: maze.get(myPosition).keySet()){
+//					 lobs=observe(dest);
+//					majMap1(dest,lobs);
+//					majMap2(lobs,dest);
+//				}
+//				
+				
 
 				// Met a jour les noeuds 
 				//System.out.println("position=" + myPosition  + " name =" + this.myAgent.getLocalName()   );
@@ -399,11 +520,11 @@ public class AgentAventurier extends abstractAgent{
 				if (etatNoeud.containsKey(dest)== false)
 				{
 					etatNoeud.put(dest, StateMaze.Inconnue);
-				// si maze ne contient pas myPosition comme neoud entrant
-		//			graph.addNode(dest);
-		//			Node destNode = graph.getNode(dest);
-//					destNode.addAttribute("ui.label", dest);
-//					destNode.addAttribute("ui.class","node"); 
+					// si maze ne contient pas myPosition comme neoud entrant
+					//			graph.addNode(dest);
+					//			Node destNode = graph.getNode(dest);
+					//					destNode.addAttribute("ui.label", dest);
+					//					destNode.addAttribute("ui.class","node"); 
 				}
 				if (i==0 && !maze.containsKey(myPosition))
 				{
@@ -411,29 +532,29 @@ public class AgentAventurier extends abstractAgent{
 					temp.put(dest, 0);
 					maze.put(myPosition, temp);
 					//graph.addNode(myPosition);
-					
+
 				}
 				// si l'arrete myPosition/dest n'existe pas.
 				if (!maze.get(myPosition).containsKey(dest) && dest != myPosition)
 				{
-//					if (graph.getNode(myPosition)==null)
-//					{
-//						graph.addNode(myPosition);
-//						Node destNode = graph.getNode(myPosition);
-//						destNode.addAttribute("ui.label", myPosition);
-//						destNode.addAttribute("ui.class","node"); 
-//					}
-//					if (graph.getNode(dest)==null)
-//					{
-//						graph.addNode(dest);
-//						Node destNode = graph.getNode(dest);
-//						destNode.addAttribute("ui.label", dest);
-//						destNode.addAttribute("ui.class","node"); 
-//					}
+					//					if (graph.getNode(myPosition)==null)
+					//					{
+					//						graph.addNode(myPosition);
+					//						Node destNode = graph.getNode(myPosition);
+					//						destNode.addAttribute("ui.label", myPosition);
+					//						destNode.addAttribute("ui.class","node"); 
+					//					}
+					//					if (graph.getNode(dest)==null)
+					//					{
+					//						graph.addNode(dest);
+					//						Node destNode = graph.getNode(dest);
+					//						destNode.addAttribute("ui.label", dest);
+					//						destNode.addAttribute("ui.class","node"); 
+					//					}
 					maze.get(myPosition).put(dest, 0);
-	//				if(dest!=myPosition)
-	//				graph.addEdge(myPosition+dest, dest, myPosition);
-					
+					//				if(dest!=myPosition)
+					//				graph.addEdge(myPosition+dest, dest, myPosition);
+
 				}
 			}
 		}
@@ -484,7 +605,18 @@ public class AgentAventurier extends abstractAgent{
 				}
 			}
 		}
+		
+		
 
+		public String findDestination() {
+			for( String s : etatNoeud.keySet()){
+				if ( etatNoeud.get(s) == StateMaze.Rien && s != null) return s ;
+			}
+			System.out.println("PAS TROUVER DE CHEMIN");
+			return pos ;
+		}
+
+	}
 
 
 		/*******************************************************
@@ -543,7 +675,7 @@ public class AgentAventurier extends abstractAgent{
 				ServiceDescription sd  = new ServiceDescription();
 				sd.setType( "AventurierDeLextreme" ); /* le même nom de service que celui qu'on a déclaré*/
 				dfd.addServices(sd);
-				
+
 				DFAgentDescription[] result;
 				try {
 					result = DFService.search(this.myAgent, dfd);
@@ -555,15 +687,22 @@ public class AgentAventurier extends abstractAgent{
 						if (!a.equals(this.myAgent.getAID()) ){
 							final ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
 							msg.setSender(this.myAgent.getAID());
-							
-							System.out.println(myAgent.getLocalName() +" envoie : "+pos + "@" + dest + "&" + state + " pour " + a.getLocalName());
-							
-							
+
+	//////////////////						System.out.println(myAgent.getLocalName() +" envoie : "+pos + "@" + dest + "&" + state + " pour " + a.getLocalName());
+
+
 							msg.addReceiver(a); // hardcoded= bad, must give it with objtab				 
 
 
 							msg.setContent(pos + "@" + dest + "&" + state);
 							this.myAgent.sendMessage(msg);
+							
+							//
+							//ajout de gestion des messages
+							boiteEnvoie.add(msg);
+							//
+							//
+							//
 						}
 					}
 
@@ -582,7 +721,7 @@ public class AgentAventurier extends abstractAgent{
 
 			@Override
 			public boolean done() {
-				
+
 				return finished;
 			}
 
@@ -593,7 +732,7 @@ public class AgentAventurier extends abstractAgent{
 
 
 
-	}
+	
 
 
 
@@ -641,13 +780,15 @@ public class AgentAventurier extends abstractAgent{
 
 			//verifie si il faut aller chercher un tresor
 			gestionTresor();
+			
+			accuserDeReception();
 
 
 			final MessageTemplate msgTemplate = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
 			final ACLMessage msg = this.myAgent.receive(msgTemplate);
 
 			if (msg != null ) {	
-				System.out.println(myAgent.getLocalName()+" a recu "+ msg.getContent());
+///////////////////////				System.out.println(myAgent.getLocalName()+" a recu "+ msg.getContent());
 
 				//				AID sender = msg.getSender();
 				//				if ( ! senders.contains(sender)){
@@ -670,6 +811,8 @@ public class AgentAventurier extends abstractAgent{
 				}
 
 				else {
+					
+					envoieAccuser(msg.getSender());
 
 					String[]result= new String[3];
 					String[]listeMsg = message.split("@");
@@ -696,7 +839,7 @@ public class AgentAventurier extends abstractAgent{
 			else{
 				//	System.out.println("pas de message");
 			}
-			
+
 
 		}
 
@@ -706,7 +849,7 @@ public class AgentAventurier extends abstractAgent{
 			if (tresoreEnVue && System.currentTimeMillis()- time > clock){
 				tresoreEnVue = false;
 				size = Integer.MAX_VALUE ;
-				System.out.println(myAgent.getLocalName() + " va chercher le tr�sore");
+				System.out.println(myAgent.getLocalName() + " va chercher le tresore");
 				// enlever le behavior d'exploration et mettre le behavior de recherche de tresore
 				// Stoper le explorer behavior et commence le final destiantion behavior
 				if (comportement.containsKey("destination"))
@@ -723,21 +866,21 @@ public class AgentAventurier extends abstractAgent{
 
 		private void majMap3(String pos ,String dest){
 
-//				if (graph.getNode(pos)==null)
-//				{
-//					graph.addNode(pos);
-//					Node destNode = graph.getNode(pos);
-//					destNode.addAttribute("ui.label", pos);
-//					destNode.addAttribute("ui.class","node"); 
-//				}
-//				if (graph.getNode(dest)==null)
-//				{
-//					graph.addNode(dest);
-//					Node destNode = graph.getNode(dest);
-//					destNode.addAttribute("ui.label", dest);
-//					destNode.addAttribute("ui.class","node"); 
-//				}
-			
+			//				if (graph.getNode(pos)==null)
+			//				{
+			//					graph.addNode(pos);
+			//					Node destNode = graph.getNode(pos);
+			//					destNode.addAttribute("ui.label", pos);
+			//					destNode.addAttribute("ui.class","node"); 
+			//				}
+			//				if (graph.getNode(dest)==null)
+			//				{
+			//					graph.addNode(dest);
+			//					Node destNode = graph.getNode(dest);
+			//					destNode.addAttribute("ui.label", dest);
+			//					destNode.addAttribute("ui.class","node"); 
+			//				}
+
 			if(!maze.containsKey(pos))
 			{
 				HashMap<String,Integer> temp = new HashMap<String,Integer>();
@@ -747,8 +890,8 @@ public class AgentAventurier extends abstractAgent{
 			if(!maze.get(pos).containsKey(dest))
 			{
 				maze.get(pos).put(dest, 1);
-//				if(graph.getEdge(pos+dest)==null && dest!=pos)
-//				graph.addEdge(pos+dest, dest, pos);
+				//				if(graph.getEdge(pos+dest)==null && dest!=pos)
+				//				graph.addEdge(pos+dest, dest, pos);
 			}
 
 			if(!maze.containsKey(dest))
@@ -760,8 +903,8 @@ public class AgentAventurier extends abstractAgent{
 			if(!maze.get(dest).containsKey(pos))
 			{
 				maze.get(dest).put(pos, 1);
-//				if(graph.getEdge(pos+dest)==null && dest!=pos)
-//				graph.addEdge(pos+dest, dest, pos);
+				//				if(graph.getEdge(pos+dest)==null && dest!=pos)
+				//				graph.addEdge(pos+dest, dest, pos);
 			}
 		}
 
@@ -799,7 +942,29 @@ public class AgentAventurier extends abstractAgent{
 
 		}
 
+		protected void accuserDeReception(){
+			
+			 MessageTemplate msgTemplate = MessageTemplate.MatchPerformative(ACLMessage.CONFIRM);
+			 ACLMessage msg = this.myAgent.receive(msgTemplate);
+			while (msg != null){
+				if (boiteEnvoie.size() != 0)boiteEnvoie.remove(boiteEnvoie.size() -1);
+				
+				msgTemplate = MessageTemplate.MatchPerformative(ACLMessage.CONFIRM);
+				msg = this.myAgent.receive(msgTemplate);
+			}
+		}
+		
+		protected void envoieAccuser(AID sender){
+			
+			final ACLMessage msg = new ACLMessage(ACLMessage.CONFIRM);
+			msg.setSender(this.myAgent.getAID());
 
+
+			msg.addReceiver(sender); // hardcoded= bad, must give it with objtab				 
+
+			this.myAgent.sendMessage(msg);
+			
+		}
 
 
 		private void majEtat2V2 (String pos , StateMaze etat){
@@ -817,7 +982,7 @@ public class AgentAventurier extends abstractAgent{
 	/*******************************************************
 	 * 
 	 * 
-	 * 				BEHAVIOURS 5 :  THE TALKER OF TREASURE
+	 * 				BEHAVIOURS 4 :  THE TALKER OF TREASURE
 	 * 
 	 * 
 	 ********************************************************/
@@ -906,7 +1071,7 @@ public class AgentAventurier extends abstractAgent{
 	/*******************************************************
 	 * 
 	 * 
-	 * 				BEHAVIOURS 6 :  THE TALKER OF CAPACITY
+	 * 				BEHAVIOURS 5 :  THE TALKER OF CAPACITY
 	 * 
 	 * 
 	 ********************************************************/
@@ -995,7 +1160,7 @@ public class AgentAventurier extends abstractAgent{
 	/**********************************************************************
 	 * 
 	 * 
-	 * 				BEHAVIOURS 7 : THE TREASUR FINDER
+	 * 				BEHAVIOURS 6 : THE TREASURE FINDER
 	 * 
 	 * 
 	 **********************************************************************/
@@ -1016,66 +1181,143 @@ public class AgentAventurier extends abstractAgent{
 		abstractAgent myAgent;
 
 		public littlestWayBehaviour(final abstractAgent myagent, String depart, String destination,Environment realEnv) {
-
+			
 			super(myagent, clock);
 			//			this.maze = maze;
 			//			this.etatNoeud = etatNoeud;
 
 			this.realEnv = realEnv;
 			this.myAgent = myagent;
-			
+
 			position =0;
 			chemin = plusCourtChemin( destination);
-			System.out.println("RECHERCHE DE TRESOR !!!for " + myagent.getLocalName());
-			String s = "";
-			for (String s1 : chemin){
-				s+= "->"+s1;
-			}
-			System.out.println(s);
+//			System.out.println("RECHERCHE DE TRESOR !!!for " + myagent.getLocalName());
+//			String s = "";
+//			for (String s1 : chemin){
+//				s+= "->"+s1;
+//			}
+//			System.out.println(s);
 		}
 
 
 		protected void onTick() {
-			
-			
+			System.out.println("pcc"+pos);
+
 			// ecoute ses messages
 			myAgent.addBehaviour (new ListenerBehaviour (myAgent));
 
 			String myPosition=getCurrentPosition();
-			
-			
+
+
 			List<Attribute> lattribute= realEnv.observe(myPosition, this.myAgent.getLocalName()).get(0).getR();
 			for(Attribute a:lattribute){
 				switch (a) {
-					case TREASURE:
-						System.out.println("My current backpack capacity is:"+ getBackPackFreeSpace());
-						System.out.println("Value of the treasure on the current position: "+a.getValue());
-						System.out.println("I," +  this.myAgent.getLocalName() + " grabbed the treasure entirely :"+pick());
-						
-						break;
-					default:
-						break;
+				case TREASURE:
+					System.out.println("My current backpack capacity is:"+ getBackPackFreeSpace());
+					System.out.println("Value of the treasure on the current position: "+a.getValue());
+					System.out.println("I," +  this.myAgent.getLocalName() + " grabbed the treasure entirely :"+pick());
+
+					break;
+				default:
+					break;
 				}
 			}			
-			
-			
-			
+
+
+
 			if (myPosition!="" ){
 				if (position >= chemin.size()-1){
-					myAgent.addBehaviour(new ExplorerBehaviour(myAgent, realEnv));
+					comportement.put("explore", new ExplorerBehaviour(myAgent, realEnv));
+					myAgent.addBehaviour(comportement.get("explore"));
 					myAgent.removeBehaviour(this);
+					comportement.remove("destination");
+					return ;
 				}
 				if  ( position < chemin.size() -1){
 					position += 1;
 					move(myPosition, chemin.get(position));
 				}
-				
+
 			}
 
 		}
 
 
 	}
+	
+	
+	
+	/*******************************************************
+	 * 
+	 * 
+	 * 				BEHAVIOURS 7 :  THE TALKER OF MEMORY
+	 * 
+	 * 
+	 ********************************************************/
+
+
+	public class TalkmemoryBehaviour extends SimpleBehaviour{
+		/**
+		 * When an agent choose to move
+		 *  
+		 */
+		private static final long serialVersionUID = 9088209402507795289L;
+
+		private boolean finished=false;
+		private Environment realEnv;
+
+		private StateMaze state;
+		private int valeurT;
+		int size;
+		public abstractAgent myAgent;
+
+		public TalkmemoryBehaviour (final abstractAgent myagent,Environment realEnv) {
+			super();
+			this.realEnv=realEnv;
+			this.myAgent = myagent;
+		}
+
+
+
+		@Override
+		public void action() {
+			//Create a message in order to send it to the choosen agent
+
+
+			//récupère les adresses de ses gens
+			DFAgentDescription dfd = new DFAgentDescription();
+			ServiceDescription sd  = new ServiceDescription();
+			sd.setType( "AventurierDeLextreme" ); /* le même nom de service que celui qu'on a déclaré*/
+			dfd.addServices(sd);
+
+			DFAgentDescription[] result;
+			try {
+				for (ACLMessage msg : boiteEnvoie){
+					System.out.println(myAgent.getLocalName() +" :" + msg.getContent());
+						this.myAgent.sendMessage(msg);
+					}
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+
+
+
+			this.finished=true;
+		}
+
+
+
+		@Override
+		public boolean done() {
+			//myAgent.addBehaviour (new ListenerBehaviour (myAgent));
+			return finished;
+		}
+	}
+
+
+	
 
 
 }

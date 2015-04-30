@@ -1,1 +1,1 @@
-http://ppti-14-509-07.ufr-info-p6.jussieu.fr:7778/acc
+http://134.157.244.240:7778/acc

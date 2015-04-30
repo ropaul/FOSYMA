@@ -73,7 +73,7 @@ public class EmptyEnv {
 				////
 				////
 
-				env= new Environment(ENVtype.GRID_WT , 5); // ANCIENEMENT (true,30)
+				env= new Environment(ENVtype.GRID , 5); // ANCIENEMENT (true,30)
 				////
 				////
 				///

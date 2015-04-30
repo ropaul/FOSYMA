@@ -134,10 +134,10 @@ public Vector <Integer> afficheChemin(int i){
         
     }
     lesNoeudsIntermediaires.add(source);
-    for (int j= lesNoeudsIntermediaires.size()-1; j>0;j--){
-        System.out.print("-->"+lesNoeudsIntermediaires.get(j));
-    }
-    System.out.println();
+//    for (int j= lesNoeudsIntermediaires.size()-1; j>0;j--){
+//        System.out.print("-->"+lesNoeudsIntermediaires.get(j));
+//    }
+//    System.out.println();
     return lesNoeudsIntermediaires;
 }
 
